@@ -1,7 +1,8 @@
 <section id="resources">
-  <h3 class="body-header">References + Open Source</h3>
+  <h3 class="body-header">Datasets and sources</h3>
   <p class="body-text">
-    This article is a product of the following resources:
+    This article is a product of the following resources: (Ignore for now as
+    this is just what was in the original template, will be changed)
     <br /><br />
   </p>
   <div class="resource-list">
@@ -14,10 +15,6 @@
       <span>(Michael Keller)</span>
     </p>
     <p class="resource-item">
-      <a class="on-end" href="https://katex.org/">KaTeX</a>
-      <span>(Emily Eisenberg & Sophie Alpert)</span>
-    </p>
-    <p class="resource-item">
       <a class="on-end" href="https://svelte.dev/">Svelte</a>
       <span>(Rich Harris)</span>
     </p>
@@ -28,7 +25,7 @@
   #resources {
     padding: 2rem 1rem;
     background-color: var(--primary);
-    color: white;
+    color: #b3b3b3;
   }
 
   .resource-list {
@@ -45,7 +42,7 @@
 
   a.on-end {
     text-decoration: underline;
-    color: #f1f3f3;
+    color: #1db954;
   }
 
   @media screen and (max-width: 950px) {

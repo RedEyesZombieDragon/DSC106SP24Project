@@ -2,16 +2,16 @@
   /* Fonts 
   */
   --font-main: "Verdana";
-  --font-heavy: "Arial";
+  --font-heavy: "Impact";
 
 
   --black: #232f3e;
 
   /* neutrals */
-  --darksquidink: #161e2d;
+  --darksquidink: #121212;
   --stone: #d4dada;
   --paper: #f1f3f3;
-  --white: #ffffff;
+  --white: #212121;
 
   /* Z-Index */
   --z-bottom: -100;
@@ -65,19 +65,23 @@ body {
 }
 
 a {
-  color: var(--primary);
+  color: var(--paper);
   font-family: var(--font-heavy);
 }
 
 h1 {
-  color: var(--squid-ink);
+  color: var(--stone);
   font-family: var(--font-heavy);
 }
 
 p {
-  color: var(--squid-ink);
+  color: var(--stone);
   font-family: var(--font-main);
   font-weight: none;
+}
+
+svg text {
+  fill: var(--paper);
 }
 
 /* mobile */

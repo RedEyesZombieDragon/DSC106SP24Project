@@ -1,9 +1,7 @@
 <section id="intro">
-  <h1 id="intro-hed">Title Of The Article</h1>
-  <h1 class="intro-sub">Subtitle of the article.</h1>
-  <h3 id="intro__date">
-    <a href="https://twitter.com/" target="_blank">Author Name</a>, Month Year
-  </h3>
+  <h1 id="intro-hed">Are Industry Plants Real?</h1>
+  <h1 class="intro-sub">An Exploration into Spotify Featured Artists</h1>
+  <h3 id="intro__date">Akshay Medidi and Pranav K: May 2024</h3>
 </section>
 
 <style>
@@ -22,12 +20,12 @@
     text-transform: uppercase;
     max-width: 100%;
     margin: auto;
-    color: var(--squid-ink);
+    color: var(--paper);
   }
 
   .intro-sub {
     font-size: 1.4rem;
-    color: var(--squid-ink);
+    color: var(--stone);
     text-align: center;
     margin: 1rem;
     opacity: 0.75;
@@ -42,7 +40,7 @@
     margin-top: 15px;
     padding-bottom: 0px;
     margin-bottom: 0px;
-    color: black;
+    color: rgb(255, 255, 255);
     padding-bottom: 1rem;
     font-family: var(--font-main);
   }

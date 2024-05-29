@@ -1,200 +1,235 @@
 <script>
-  import { line, curveStep } from "d3-shape";
-  import { scaleLinear } from "d3-scale";
-  import { errorData } from "../datasets.js";
+  import { onMount } from "svelte";
+  import { select } from "d3-selection";
+  import { scaleTime, scaleLinear } from "d3-scale";
+  import { axisBottom, axisLeft } from "d3-axis";
+  import { line, curveBasis } from "d3-shape";
+  import { timeParse, timeFormat } from "d3-time-format";
+  import { extent } from "d3-array";
   import { format } from "d3-format";
 
-  const formatter = format(".0%");
+  let width = 800;
+  let height = 400;
+  let margin = { top: 20, right: 30, bottom: 40, left: 70 };
+  let allData = [];
+  let data = [];
+  let selectedArtist = "Coi Leray";
 
-  let height = 500;
-  let width = 500;
-  const mobile = window.innerWidth <= 700;
-  const margin = {
-    top: mobile ? 40 : 50,
-    bottom: mobile ? 10 : 25,
-    left: mobile ? 0 : 80,
-    right: mobile ? 0 : 10,
-  };
+  const parseDate = timeParse("%Y-%m-%d");
+  const formatDate = timeFormat("%m/%d");
 
-  $: xScale = scaleLinear()
-    .domain([0, 14.4])
-    .range([margin.left, width - margin.right]);
-  $: accuracyScale = scaleLinear()
-    .domain([0.0, 1])
-    .range([height - margin.bottom, margin.top]);
-  $: precisionScale = scaleLinear()
-    .domain([0.0, 1])
-    .range([height - margin.bottom, margin.top]);
+  onMount(async () => {
+    try {
+      const response = await fetch("/CLEANED_featured_Spotify_artist_info.csv");
+      const text = await response.text();
+      allData = parseCSV(text);
+      data = filterData(selectedArtist);
+      console.log("Processed Data:", data);
+      createChart();
+    } catch (error) {
+      console.error("Error loading or processing data:", error);
+    }
+  });
 
-  $: accuracyPath = line()
-    .x((d) => xScale(d.thresh))
-    .y((d) => accuracyScale(d.accuracy))
-    .curve(curveStep);
+  function parseCSV(text) {
+    const rows = text.split("\n").slice(1);
+    return rows
+      .map((row) => {
+        const columns = row.split(",");
+        if (columns.length > 3) {
+          const name = columns[2].trim();
+          const dateStr = columns[0].trim();
+          let listeners = columns[3].trim();
 
-  $: precisionPath = line()
-    .x((d) => xScale(d.thresh))
-    .y((d) => precisionScale(d.precision))
-    .curve(curveStep);
+          listeners = +listeners.replace(/[^0-9]/g, "");
+
+          const date = parseDate(dateStr);
+
+          return {
+            name: name.toLowerCase(),
+            date: date,
+            listeners: listeners,
+          };
+        }
+        return null;
+      })
+      .filter((d) => d !== null);
+  }
+
+  function filterData(artist) {
+    return allData.filter((d) => d.name === artist.toLowerCase());
+  }
+
+  function createChart() {
+    const svg = select("#chart")
+      .attr("width", width)
+      .attr("height", height)
+      .html("")
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = scaleTime()
+      .domain(extent(data, (d) => d.date))
+      .range([0, width - margin.left - margin.right]);
+
+    const y = scaleLinear()
+      .domain([
+        Math.floor(Math.min(...data.map((d) => d.listeners)) / 1e6) * 1e6,
+        Math.ceil(Math.max(...data.map((d) => d.listeners)) / 1e6) * 1e6,
+      ])
+      .range([height - margin.top - margin.bottom, 0]);
+
+    svg.append("g").call(axisLeft(y).tickFormat(format("~s")));
+
+    svg
+      .append("g")
+      .attr("transform", `translate(0,${height - margin.top - margin.bottom})`)
+      .call(axisBottom(x).tickFormat(formatDate));
+
+    svg.selectAll(".domain").style("stroke", "white");
+    svg.selectAll(".tick line").style("stroke", "white");
+
+    svg
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("height", height - margin.top - margin.bottom)
+      .attr("width", width - margin.left - margin.right)
+      .style("stroke", "white")
+      .style("fill", "none")
+      .style("stroke-width", "2px");
+
+    const lineGenerator = line()
+      .x((d) => x(d.date))
+      .y((d) => y(d.listeners))
+      .curve(curveBasis);
+
+    svg
+      .append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", "limegreen")
+      .attr("stroke-width", 1.5)
+      .attr("d", lineGenerator);
+
+    const horizontalLine = svg
+      .append("line")
+      .attr("class", "hover-line")
+      .attr("x1", 0)
+      .attr("x2", width - margin.left - margin.right)
+      .attr("y1", 0)
+      .attr("y2", 0)
+      .attr("stroke", "white")
+      .attr("stroke-width", 1)
+      .attr("opacity", 0);
+
+    const textLabel = svg
+      .append("text")
+      .attr("class", "hover-text")
+      .attr("x", width - margin.left - margin.right - 10)
+      .attr("y", 0)
+      .attr("dy", "-0.5em")
+      .attr("text-anchor", "end")
+      .attr("fill", "white")
+      .attr("opacity", 0);
+
+    svg
+      .selectAll(".dot")
+      .data(data)
+      .enter()
+      .append("circle")
+      .attr("class", "dot")
+      .attr("cx", function (d) {
+        return x(d.date);
+      })
+      .attr("cy", function (d) {
+        return y(d.listeners);
+      })
+      .attr("r", 5)
+      .style("fill", "white")
+      .on("mouseover", function (event, d) {
+        select(this).attr("r", 7);
+        horizontalLine
+          .attr("y1", y(d.listeners))
+          .attr("y2", y(d.listeners))
+          .attr("opacity", 1);
+        textLabel
+          .attr("y", y(d.listeners))
+          .attr("x", x(d.date) + 10)
+          .attr("opacity", 1)
+          .text(format("~s")(d.listeners));
+      })
+      .on("mouseout", function (d) {
+        select(this).attr("r", 5);
+        horizontalLine.attr("opacity", 0);
+        textLabel.attr("opacity", 0);
+      });
+
+    svg
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 0 - margin.left)
+      .attr("x", 0 - height / 2 + 35)
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .style("fill", "white")
+      .text("Monthly Listeners (In Millions)");
+
+    svg
+      .append("text")
+      .attr(
+        "transform",
+        `translate(${(width - margin.left - margin.right) / 2} ,${height - margin.top + margin.bottom - 10})`
+      )
+      .style("text-anchor", "middle")
+      .style("fill", "white")
+      .text("Date");
+  }
+
+  function handleSelection(event) {
+    selectedArtist = event.target.value;
+    data = filterData(selectedArtist);
+    createChart();
+  }
 </script>
 
-<h1 class="body-header">Responsive, Static Chart Example</h1>
-<p class="body-text">
-  This component is an example of a responsive chart built with Svelte and
-  D3.js.
-</p>
-
-<div id="error-chart" bind:offsetWidth={width} bind:offsetHeight={height}>
-  <svg
-    width={width + margin.left + margin.right}
-    height={height + margin.top + margin.bottom}
+<h1 style="text-align: center; color: white;">
+  Monthly Listeners for Industry Plants
+</h1>
+<div style="display: flex; justify-content: space-between;">
+  <svg id="chart"></svg>
+  <div
+    style="display: flex; align-items: center; justify-content: center; flex-grow: 1;"
   >
-    <!-- y-ticks -->
-    {#each [0.2, 0.4, 0.6, 0.8, 1.0] as tick}
-      <g transform={`translate(${margin.left - 5} ${accuracyScale(tick) + 0})`}>
-        <!-- svelte-ignore component-name-lowercase -->
-        <line
-          class="y-axis-line"
-          x1="0"
-          x2={width - margin.right - margin.left}
-          y1="0"
-          y2="0"
-          stroke="black"
-        ></line>
-        <text
-          class="error-axis-text"
-          y="0"
-          text-anchor="end"
-          dominant-baseline="middle">{formatter(tick)}</text
-        >
-      </g>
-    {/each}
-    <!-- axis lines -->
-    <!-- x -->
-    <!-- svelte-ignore component-name-lowercase -->
-    <line
-      class="error-axis-line"
-      y1={height - margin.bottom}
-      y2={height - margin.bottom}
-      x1={margin.left}
-      x2={width}
-      stroke="black"
-      stroke-width="2"
-    ></line>
-    <!-- y -->
-    <!-- svelte-ignore component-name-lowercase -->
-    <line
-      class="error-axis-line"
-      y1={margin.top}
-      y2={height - margin.bottom}
-      x1={margin.left}
-      x2={margin.left}
-      stroke="black"
-      stroke-width="2"
-    ></line>
-
-    <path class="outline-line" d={accuracyPath(errorData)}></path>
-    <path class="path-line" d={accuracyPath(errorData)} stroke="#c9208a"></path>
-    <path class="outline-line" d={precisionPath(errorData)}></path>
-    <path class="path-line" d={precisionPath(errorData)} stroke="#ab00d6"
-    ></path>
-
-    <!-- axis labels -->
-    <text
-      class="error-axis-label"
-      y={height + margin.bottom}
-      x={(width + margin.left) / 2}
-      text-anchor="middle">Decision Boundary Threshold</text
-    >
-    <text
-      class="error-axis-label"
-      y={margin.left / 3}
-      x={-(height / 2)}
-      text-anchor="middle"
-      transform="rotate(-90)">Score</text
-    >
-
-    <!-- x-ticks -->
-    {#each xScale.ticks() as tick}
-      <g transform={`translate(${xScale(tick) + 0} ${height - margin.bottom})`}>
-        <text class="error-axis-text" y="15" text-anchor="end">{tick}</text>
-      </g>
-    {/each}
-  </svg>
+    <select id="options" on:change={handleSelection}>
+      <option value="Coi Leray">Coi Leray</option>
+      <option value="Ice Spice">Ice Spice</option>
+      <option value="The Kid Laroi">The Kid Laroi</option>
+      <option value="Dominic Fike">Dominic Fike</option>
+      <option value="PinkPantheress">Pink Pantheress</option>
+    </select>
+  </div>
 </div>
 
 <style>
-  #error-chart {
+  svg {
+    display: block;
     margin: auto;
-    max-height: 55vh;
-    width: 58%;
-    margin: 1rem auto;
   }
 
-  .error-axis-text {
-    font-size: 0.9rem;
+  #options {
+    margin-left: 20px;
+    font-size: 16px;
   }
 
-  .y-axis-line {
-    opacity: 0.2;
+  .hover-line {
+    stroke: white;
+    stroke-width: 1;
+    opacity: 0;
   }
 
-  .error-axis-label {
-    text-transform: uppercase;
-    font-size: 1rem;
-  }
-
-  .path-line {
-    fill: none;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-    stroke-width: 6;
-  }
-
-  .outline-line {
-    fill: none;
-    stroke: #f1f3f3;
-    stroke-width: 10;
-  }
-
-  /* ipad */
-  @media screen and (max-width: 950px) {
-    #error-chart {
-      max-height: 55vh;
-      width: 85%;
-      margin: 1rem auto;
-    }
-    .error-axis-label {
-      font-size: 0.8rem;
-    }
-    .error-axis-text {
-      font-size: 0.8rem;
-    }
-    .path-line {
-      stroke-width: 5;
-    }
-    .outline-line {
-      stroke-width: 9;
-    }
-  }
-  /* mobile */
-  @media screen and (max-width: 750px) {
-    #error-chart {
-      max-height: 55vh;
-      width: 95%;
-      margin: 1rem auto;
-    }
-
-    .error-axis-label {
-      font-size: 0.75rem;
-    }
-    .error-axis-text {
-      font-size: 0.7rem;
-    }
-    .path-line {
-      stroke-width: 4;
-    }
-    .outline-line {
-      stroke-width: 7;
-    }
+  .hover-text {
+    fill: rgb(255, 255, 255);
+    opacity: 0;
   }
 </style>
